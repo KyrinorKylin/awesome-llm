@@ -203,7 +203,7 @@ class TopKRouter(nn.Module):
         # top-k: [batch_size, seq_len, top_k]
         topk_logits, topk_ids = torch.topk(logits, k=self.top_k, dim=-1)
 
-        # 计算权重: [batch_size, seq_len, top_k]
+        # 计算归一化权重: [batch_size, seq_len, top_k]
         topk_weights = topk_logits / topk_logits.sum(dim=-1, keepdim=True)
 
         return topk_weights, topk_ids
@@ -385,12 +385,12 @@ class DeepSeekRouter(nn.Module):
         '''
         # 每个 token 对应的专家概率：[batch_size, seq_len, num_experts]
         logits = self.router(x)     
-        logits = torch.sigmoid(logits, dim=-1)
+        logits = torch.sigmoid(logits)  #sigmoid 没有dim参数
 
         # top-k: [batch_size, seq_len, top_k]
         topk_logits, topk_ids = torch.topk(logits, k=self.top_k, dim=-1)
 
-        # 计算权重: [batch_size, seq_len, top_k]
+        # 计算归一化权重: [batch_size, seq_len, top_k]
         topk_weights = topk_logits / topk_logits.sum(dim=-1, keepdim=True)
 
         # 路由权重缩放
@@ -399,11 +399,10 @@ class DeepSeekRouter(nn.Module):
         return topk_weights, topk_ids
 
 
-# todo Load Balancing Loss负载均衡损失
-# todo Auxiliary Loss
-# todo Router Z-Loss
-# todo Expert Capacity
-# todo Efficient Dispatch高效分发token
+# todo Load Balancing Loss：负载均衡损失
+# todo Auxiliary-Loss-Free Load Balancing：无辅助损失负载均衡
+# todo Expert Capacity：专家容量限制
+# todo Efficient Dispatch：高效分发 Token
 class DeepSeekMoE(nn.Module):
     '''
     不同：
