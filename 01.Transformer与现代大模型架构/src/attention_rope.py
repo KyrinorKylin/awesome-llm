@@ -65,9 +65,9 @@ class MHA(nn.Module):
         q, k, v = [linear(x) for linear, x in zip(self.linears, (q, k, v))]
         q, k, v = [x.view(batch_size, -1, self.num_heads, self.d_k).transpose(1,2) for x in [q, k, v]]
 
-        # 如果没有就默认用连续位置索引
+        # 如果没有就默认用连续位置索引（注意 device 要与 q 一致，否则 GPU 上会报错）
         if token_ids is None:
-            token_ids = torch.arange(seq_len)
+            token_ids = torch.arange(seq_len, device=q.device)
 
         # 在计算注意力之前对 QK 用 RoPE
         q, k = self.rope(q, token_ids), self.rope(k, token_ids)
@@ -135,9 +135,9 @@ class MQA(nn.Module):
         k = k.unsqueeze(1)
         v = v.unsqueeze(1)
 
-        # 如果没有就默认用连续位置索引
+        # 如果没有就默认用连续位置索引（注意 device 要与 q 一致，否则 GPU 上会报错）
         if token_ids is None:
-            token_ids = torch.arange(seq_len)
+            token_ids = torch.arange(seq_len, device=q.device)
 
         # 在计算注意力之前对 QK 用 RoPE
         q, k = self.rope(q, token_ids), self.rope(k, token_ids)
@@ -213,9 +213,9 @@ class GQA(nn.Module):
         k = k.view(batch_size, -1, self.num_groups, self.d_k).transpose(1, 2)
         v = v.view(batch_size, -1, self.num_groups, self.d_k).transpose(1, 2)
 
-        # 如果没有就默认用连续位置索引
+        # 如果没有就默认用连续位置索引（注意 device 要与 q 一致，否则 GPU 上会报错）
         if token_ids is None:
-            token_ids = torch.arange(seq_len)
+            token_ids = torch.arange(seq_len, device=q.device)
 
         # 在计算注意力之前对 QK 用 RoPE
         q, k = self.rope(q, token_ids), self.rope(k, token_ids)
@@ -269,6 +269,9 @@ class MLA(nn.Module):
         self.W_UK = nn.Linear(d_c_kv, d_model)
         self.W_UV = nn.Linear(d_c_kv, d_model)
         self.W_KR = nn.Linear(d_model, d_rope)
+
+        # 输出投影（原来漏掉了，forward 里调用 self.W_O 会直接 AttributeError）
+        self.W_O = nn.Linear(d_model, d_model)
 
         self.rope = RotaryPositionalEmbedding(d_rope)
         self.dropout = nn.Dropout(dropout)

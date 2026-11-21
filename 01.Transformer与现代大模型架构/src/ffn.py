@@ -112,7 +112,6 @@
             SwiGLU Experts (Shared Expert + Fine-grained ) + Router 概率用 Sigmoid
 '''
 # todo Router能不能像注意力机制那样计算概率
-from turtle import forward
 from typing import Literal
 import torch
 from torch import nn

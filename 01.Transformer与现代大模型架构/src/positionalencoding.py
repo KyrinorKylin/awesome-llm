@@ -106,7 +106,7 @@ class LearnablePositionalEncoding(nn.Module):
 class RotaryPositionalEmbedding(nn.Module):
     def __init__(self, d_k, max_seq_len=2000, base=10000.0):
         super().__init__()
-        assert d_k//2 ==0, 'd_k不为偶数，RoPE无法进行！'
+        assert d_k % 2 == 0, 'd_k不为偶数，RoPE无法进行！'
         self.d_k = d_k
 
         # 1.获取计算参数：token索引i和第k对维度

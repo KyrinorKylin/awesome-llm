@@ -4,8 +4,8 @@
 # todo Router能不能像注意力机制那样计算概率
 # todo Load Balancing Loss：负载均衡损失
 # todo Auxiliary-Loss-Free Load Balancing：无辅助损失负载均衡
-# todo Expert Capacity：专家容量限制
-# todo Efficient Dispatch：高效分发 Token
+# todo Expert Capacity：专家容量限制【暂不实现】
+# todo Efficient Dispatch：高效分发 Token【暂不实现】
 import torch
 from torch import nn
 from ffn import GLU
@@ -85,7 +85,8 @@ class DSMoEBalancingLoss(nn.Module):
         ids_flat = ids.view(batch_size, -1)
 
         # 统计每个专家收到的 token 数量：[batch_size, num_experts]
-        expert_counts = torch.scatter_add(dim=1, index=ids_flat, src=torch.ones_like(ids_flat)).float() #按照index的索引，把src对应的值加到expert_counts中
+        # 注意：scatter_add 的第一个参数是目标张量本身，原写法 torch.scatter_add(dim=..., index=..., src=...) 少传了 input，会直接 TypeError
+        expert_counts = expert_counts.scatter_add(dim=1, index=ids_flat, src=torch.ones_like(ids_flat)).float() #按照index的索引，把src对应的值加到expert_counts中
 
         # fi =  [expert_counts / (top_k * T)] * num_experts
         # [batch_size, num_experts]
@@ -126,6 +127,7 @@ class DSMoEBalancingLoss(nn.Module):
 
         # 计算负载均衡损失
         aux_loss = self.load_balancing_loss(logits, ids)
+        self.last_aux_loss = aux_loss   # 暴露给外部（如 Block 层面）读取
 
         # 初始化Routed Experts输出：[batch_size * seq_len, d_model]
         routed_output = torch.zeros_like(x_flat)
@@ -228,7 +230,8 @@ class DSMoEAuxFree(nn.Module):
         self.num_shared_experts= num_shared_experts
         self.bias_update_rate = bias_update_rate
 
-        self.router = DeepSeekRouter(d_model, num_experts, top_k, route_scale)
+        # 必须用 AuxFree 版 Router（带 expert_bias），否则 update_expert_bias 会 AttributeError
+        self.router = DeepSeekRouterAuxFree(d_model, num_experts, top_k, route_scale)
         self.experts = nn.ModuleList([GLU(d_model, d_ff, activation='silu') for _ in range(num_experts)])
         self.shared_experts = nn.ModuleList([GLU(d_model, d_ff, activation='silu') for _ in range(num_shared_experts)])
 

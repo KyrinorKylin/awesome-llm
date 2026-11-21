@@ -440,4 +440,5 @@ class MLA(nn.Module):
         # 结果融合
         atten_cat = attens.transpose(1, 2).contiguous().view(batch_size, -1, self.num_heads * self.d_k)
 
-        return self.W_o(atten_cat)
+        # 注意：__init__ 里定义的是 self.W_O（大写O），这里保持一致
+        return self.W_O(atten_cat)
